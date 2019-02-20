@@ -10,7 +10,12 @@ public class PeerToPeerVoice {
     public static void main(String... args) {
 
         try {
-            UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel");
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
         } catch(Exception ignored) {}
 
         Mixer mixer = Mixer.createDefault();
