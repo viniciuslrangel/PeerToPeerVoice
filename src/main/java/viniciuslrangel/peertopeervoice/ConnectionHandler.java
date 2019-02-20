@@ -20,6 +20,9 @@ public class ConnectionHandler {
         for(;;) {
             try {
                 String addrRaw = JOptionPane.showInputDialog(parent, "Partner IP");
+                if(addrRaw.isEmpty()) {
+                    continue;
+                }
                 addr = InetAddress.getByName(addrRaw);
                 break;
             } catch (UnknownHostException e) {
