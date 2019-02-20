@@ -1,3 +1,3 @@
 # PeerToPeerVoice
 
-Uses HDP Hole Punching to create direct voice communication
+Uses UDP Hole Punching to create direct voice communication
