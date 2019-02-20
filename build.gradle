@@ -12,4 +12,16 @@ repositories {
 }
 
 dependencies {
+    compile 'com.intellij:forms_rt:7.0.3'
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'viniciuslrangel.peertopeervoice.PeerToPeerVoice'
+        )
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
