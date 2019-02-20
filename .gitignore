@@ -1,0 +1,5 @@
+# Gradle cache files
+.gradle/
+
+# Gradle build files
+build/
