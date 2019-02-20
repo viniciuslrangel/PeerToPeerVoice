@@ -1,7 +1,6 @@
 package viniciuslrangel.peertopeervoice;
 
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Line;
+import javax.sound.sampled.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,21 +13,25 @@ class Mixer {
         return new Mixer(AudioSystem.getMixerInfo());
     }
 
-    private List<Info> sources = new ArrayList<>();
-    private List<Info> targets = new ArrayList<>();
+    private List<Info<SourceDataLine.Info>> sources = new ArrayList<>();
+    private List<Info<TargetDataLine.Info>> targets = new ArrayList<>();
 
     private Mixer(javax.sound.sampled.Mixer.Info[] infoList) {
         for (javax.sound.sampled.Mixer.Info info : infoList) {
             javax.sound.sampled.Mixer mixer = AudioSystem.getMixer(info);
 
             Line.Info[] source = mixer.getSourceLineInfo();
-            if (source.length > 0) {
-                sources.add(new Info(mixer, source[0]));
+            for (Line.Info sourceInfo : source) {
+                if (sourceInfo instanceof SourceDataLine.Info) {
+                    sources.add(new Info<>(mixer, (SourceDataLine.Info) sourceInfo));
+                }
             }
 
             Line.Info[] target = mixer.getTargetLineInfo();
-            if (target.length > 0) {
-                targets.add(new Info(mixer, target[0]));
+            for (Line.Info targetInfo : target) {
+                if (targetInfo instanceof TargetDataLine.Info) {
+                    targets.add(new Info<>(mixer, (TargetDataLine.Info) targetInfo));
+                }
             }
 
         }
@@ -42,30 +45,39 @@ class Mixer {
         return getStrings(sources);
     }
 
-    private String[] getStrings(List<Info> targets) {
-        String[] names = new String[targets.size()];
-        for (int i = 0, targetSize = targets.size(); i < targetSize; i++) {
-            Info target = targets.get(i);
-            names[i] = target.mixer.getMixerInfo().getName();
+    private String[] getStrings(List<Info<DataLine.Info>> infoList) {
+        String[] names = new String[infoList.size()];
+        for (int i = 0, infoListSize = infoList.size(); i < infoListSize; i++) {
+            Info<DataLine.Info> info = infoList.get(i);
+            names[i] = info.mixer.getMixerInfo().getName();
         }
         return names;
     }
 
-    public static class Info {
-        private final javax.sound.sampled.Mixer mixer;
-        private final Line.Info line;
+    Line.Info getInputByName(String name) {
+        return getByName(targets, name);
+    }
 
-        Info(javax.sound.sampled.Mixer mixer, Line.Info line) {
+    Line.Info getOutputByName(String name) {
+        return getByName(sources, name);
+    }
+
+    private <T extends Line.Info> T getByName(List<Info<T>> list, String name) {
+        for (Info<T> info : list) {
+            if (name.equals(info.mixer.getMixerInfo().getName())) {
+                return info.line;
+            }
+        }
+        return null;
+    }
+
+    public static class Info<T extends Line.Info> {
+        final javax.sound.sampled.Mixer mixer;
+        final T line;
+
+        Info(javax.sound.sampled.Mixer mixer, T line) {
             this.mixer = mixer;
             this.line = line;
-        }
-
-        public javax.sound.sampled.Mixer getMixer() {
-            return mixer;
-        }
-
-        public Line.Info getLine() {
-            return line;
         }
     }
 
