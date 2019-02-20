@@ -23,10 +23,12 @@ public class Gui extends JFrame {
     private JButton connectButton;
     private JPanel contentPane;
     private JLabel statusLbl;
+    private JSlider sliderGain;
 
     private final Mixer mixer;
     private final ConnectionHandler con;
 
+    private volatile float gain;
     private volatile ConnectionHandler.ConnectionInfo info;
 
     private volatile TargetDataLine targetLine;
@@ -42,6 +44,14 @@ public class Gui extends JFrame {
         Preferences prefs = Preferences.userNodeForPackage(PeerToPeerVoice.class);
         String selectionInput = prefs.get("INPUT", null);
         String selectionOutput = prefs.get("OUTPUT", null);
+
+        sliderGain.setMaximum(100);
+        gain = prefs.getFloat("GAIN", 1.0f);
+        sliderGain.setValue((int) (gain * 100 / 4));
+        sliderGain.addChangeListener(e -> {
+            gain = sliderGain.getValue() * 4 / 100;
+            prefs.putFloat("GAIN", gain);
+        });
 
         DefaultComboBoxModel<String> inputModel = new DefaultComboBoxModel<>(mixer.getInputNameList());
         if (selectionInput != null && inputModel.getIndexOf(selectionInput) != -1) {
@@ -75,7 +85,7 @@ public class Gui extends JFrame {
         setVisible(true);
         connectButton.addActionListener(e -> {
             if (this.info != null) {
-                info = null;
+                this.info = null;
                 info.socket.close();
                 statusLbl.setText("Disconnected");
                 connectButton.setText("Connect");
@@ -169,7 +179,10 @@ public class Gui extends JFrame {
             } else {
                 try {
                     info.socket.receive(packet);
-                    currentOutput.write(packet.getData(), 0, packet.getLength());
+                    for (int i = 0; i < packet.getLength(); ++i) {
+                        buffer[i] *= gain;
+                    }
+                    currentOutput.write(buffer, 0, packet.getLength());
                 } catch (IOException e) {
                     e.printStackTrace();
                     try {
@@ -246,7 +259,7 @@ public class Gui extends JFrame {
      */
     private void $$$setupUI$$$() {
         contentPane = new JPanel();
-        contentPane.setLayout(new GridLayoutManager(4, 2, new Insets(0, 0, 0, 0), -1, -1));
+        contentPane.setLayout(new GridLayoutManager(5, 2, new Insets(0, 0, 0, 0), -1, -1));
         inputBox = new JComboBox();
         contentPane.add(inputBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JLabel label1 = new JLabel();
@@ -262,10 +275,12 @@ public class Gui extends JFrame {
         contentPane.add(connectButton, new GridConstraints(2, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         statusLbl = new JLabel();
         statusLbl.setText("Disconnected");
-        contentPane.add(statusLbl, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        contentPane.add(statusLbl, new GridConstraints(4, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JLabel label3 = new JLabel();
         label3.setText("Status");
-        contentPane.add(label3, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        contentPane.add(label3, new GridConstraints(4, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        sliderGain = new JSlider();
+        contentPane.add(sliderGain, new GridConstraints(3, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
