@@ -24,6 +24,7 @@ class Mixer {
             for (Line.Info sourceInfo : source) {
                 if (sourceInfo instanceof SourceDataLine.Info) {
                     sources.add(new Info<>(mixer, (SourceDataLine.Info) sourceInfo));
+                    break;
                 }
             }
 
@@ -31,6 +32,7 @@ class Mixer {
             for (Line.Info targetInfo : target) {
                 if (targetInfo instanceof TargetDataLine.Info) {
                     targets.add(new Info<>(mixer, (TargetDataLine.Info) targetInfo));
+                    break;
                 }
             }
 
