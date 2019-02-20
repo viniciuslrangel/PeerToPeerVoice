@@ -37,9 +37,19 @@ public class Gui extends JFrame {
 
         DefaultComboBoxModel<String> inputModel = new DefaultComboBoxModel<>(mixer.getInputNameList());
         inputBox.setModel(inputModel);
+        inputBox.addActionListener(e -> {
+            if (info != null) {
+                setupInput();
+            }
+        });
 
         DefaultComboBoxModel<String> outputModel = new DefaultComboBoxModel<>(mixer.getOutputNameList());
         outputBox.setModel(outputModel);
+        outputBox.addActionListener(e -> {
+            if (info != null) {
+                setupOutput();
+            }
+        });
 
         setTitle("Voice P2P - viniciuslrangel");
         setContentPane(contentPane);
