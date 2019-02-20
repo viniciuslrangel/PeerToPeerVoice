@@ -11,6 +11,7 @@ public class Gui extends JFrame {
     private JComboBox<String> outputBox;
     private JButton connectButton;
     private JPanel contentPane;
+    private JLabel statusLbl;
 
     private final Mixer mixer;
 

@@ -44,7 +44,7 @@
           <text value="Connect"/>
         </properties>
       </component>
-      <component id="43d8a" class="javax.swing.JLabel">
+      <component id="43d8a" class="javax.swing.JLabel" binding="statusLbl">
         <constraints>
           <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
         </constraints>
