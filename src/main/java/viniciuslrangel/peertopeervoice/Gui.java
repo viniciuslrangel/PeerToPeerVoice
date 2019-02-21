@@ -24,18 +24,17 @@ public class Gui extends JFrame {
     private JPanel contentPane;
     private JLabel statusLbl;
     private JSlider sliderGain;
+    private JCheckBox muteCheckbox;
 
     private final Mixer mixer;
     private final ConnectionHandler con;
 
     private volatile ConnectionHandler.ConnectionInfo info;
+    private volatile boolean muted = false;
 
     private volatile TargetDataLine targetLine;
     private volatile SourceDataLine audioOutputStream;
     private volatile FloatControl gainControl;
-
-    private Thread inputThread;
-    private Thread outputThread;
 
     private Preferences prefs;
 
@@ -46,6 +45,8 @@ public class Gui extends JFrame {
         prefs = Preferences.userNodeForPackage(PeerToPeerVoice.class);
         String selectionInput = prefs.get("INPUT", null);
         String selectionOutput = prefs.get("OUTPUT", null);
+
+        muteCheckbox.addActionListener(e -> muted = muteCheckbox.isSelected());
 
         sliderGain.setMajorTickSpacing(1500);
         sliderGain.setMinorTickSpacing(100);
@@ -118,10 +119,8 @@ public class Gui extends JFrame {
                 ex.printStackTrace();
             }
         });
-        inputThread = new Thread(this::inputLoop, "Input loop");
-        inputThread.start();
-        outputThread = new Thread(this::outputLoop, "Output loop");
-        outputThread.start();
+        new Thread(this::inputLoop, "Input loop").start();
+        new Thread(this::outputLoop, "Output loop").start();
     }
 
     private void updateSliderGain() {
@@ -138,10 +137,12 @@ public class Gui extends JFrame {
     private void inputLoop() {
         TargetDataLine currentLine = null;
         byte[] buffer = new byte[BUFFER_SIZE];
+        boolean wasMuted = false;
         while (true) {
             if (currentLine != targetLine) {
                 if (currentLine != null) {
                     currentLine.stop();
+                    currentLine.drain();
                     currentLine.close();
                 }
                 currentLine = targetLine;
@@ -155,13 +156,24 @@ public class Gui extends JFrame {
                     }
                 }
             }
+            if (wasMuted != muted) {
+                wasMuted = muted;
+                if (currentLine != null) {
+                    if (muted) {
+                        currentLine.stop();
+                        currentLine.drain();
+                    } else {
+                        currentLine.start();
+                    }
+                }
+            }
             if (currentLine == null || info == null) {
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            } else {
+            } else if (!muted) {
                 try {
                     int total = currentLine.read(buffer, 0, buffer.length);
                     info.socket.send(new DatagramPacket(buffer, 0, total, info.address, info.port));
@@ -306,7 +318,10 @@ public class Gui extends JFrame {
         label3.setText("Status");
         contentPane.add(label3, new GridConstraints(4, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         sliderGain = new JSlider();
-        contentPane.add(sliderGain, new GridConstraints(3, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        contentPane.add(sliderGain, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        muteCheckbox = new JCheckBox();
+        muteCheckbox.setText("Mute");
+        contentPane.add(muteCheckbox, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
