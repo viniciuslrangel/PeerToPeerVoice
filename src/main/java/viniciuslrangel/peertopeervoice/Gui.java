@@ -28,29 +28,41 @@ public class Gui extends JFrame {
     private final Mixer mixer;
     private final ConnectionHandler con;
 
-    private volatile float gain;
     private volatile ConnectionHandler.ConnectionInfo info;
 
     private volatile TargetDataLine targetLine;
     private volatile SourceDataLine audioOutputStream;
+    private volatile FloatControl gainControl;
 
     private Thread inputThread;
     private Thread outputThread;
+
+    private Preferences prefs;
 
     Gui(Mixer mixer) {
         this.mixer = mixer;
         this.con = new ConnectionHandler(this);
 
-        Preferences prefs = Preferences.userNodeForPackage(PeerToPeerVoice.class);
+        prefs = Preferences.userNodeForPackage(PeerToPeerVoice.class);
         String selectionInput = prefs.get("INPUT", null);
         String selectionOutput = prefs.get("OUTPUT", null);
 
-        sliderGain.setMaximum(100);
-        gain = prefs.getFloat("GAIN", 1.0f);
-        sliderGain.setValue((int) (gain * 100 / 4));
+        sliderGain.setMajorTickSpacing(1500);
+        sliderGain.setMinorTickSpacing(100);
+        sliderGain.setPaintTicks(true);
+        sliderGain.setPaintLabels(true);
+        updateSliderGain();
         sliderGain.addChangeListener(e -> {
-            gain = sliderGain.getValue() * 4 / 100;
-            prefs.putFloat("GAIN", gain);
+            int gain = sliderGain.getValue();
+            if (gainControl != null) {
+                gainControl.setValue(
+                        Math.min(
+                                Math.max(gain / 100f, gainControl.getMinimum()),
+                                gainControl.getMaximum()
+                        )
+                );
+            }
+            prefs.putInt("GAIN3", gain);
         });
 
         DefaultComboBoxModel<String> inputModel = new DefaultComboBoxModel<>(mixer.getInputNameList());
@@ -112,6 +124,17 @@ public class Gui extends JFrame {
         outputThread.start();
     }
 
+    private void updateSliderGain() {
+        if (gainControl == null) {
+            sliderGain.setEnabled(false);
+            return;
+        }
+        sliderGain.setEnabled(true);
+        sliderGain.setMinimum(((int) (100f * gainControl.getMinimum())));
+        sliderGain.setMaximum(((int) (100f * gainControl.getMaximum())));
+        sliderGain.setValue(prefs.getInt("GAIN3", 0));
+    }
+
     private void inputLoop() {
         TargetDataLine currentLine = null;
         byte[] buffer = new byte[BUFFER_SIZE];
@@ -159,13 +182,19 @@ public class Gui extends JFrame {
                     currentOutput.drain();
                     currentOutput.close();
                 }
+                gainControl = null;
                 currentOutput = audioOutputStream;
                 if (currentOutput != null) {
                     try {
                         currentOutput.open(AUDIO_FORMAT);
                         currentOutput.start();
+                        gainControl = (FloatControl) currentOutput.getControl(FloatControl.Type.MASTER_GAIN);
+                        updateSliderGain();
                     } catch (LineUnavailableException e) {
                         currentOutput = null;
+                        e.printStackTrace();
+                    } catch (IllegalArgumentException e) {
+                        updateSliderGain();
                         e.printStackTrace();
                     }
                 }
@@ -179,9 +208,6 @@ public class Gui extends JFrame {
             } else {
                 try {
                     info.socket.receive(packet);
-                    for (int i = 0; i < packet.getLength(); ++i) {
-                        buffer[i] *= gain;
-                    }
                     currentOutput.write(buffer, 0, packet.getLength());
                 } catch (IOException e) {
                     e.printStackTrace();
